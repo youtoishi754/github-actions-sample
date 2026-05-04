@@ -1,5 +1,151 @@
 # github-actions-sample
 
-GitHub Actions の基本を学ぶためのサンプルリポジトリです。  
+GitHub Actions の基本を学ぶためのサンプルリポジトリです。
 
+---
+
+## 概要
+
+GitHub Actions を用いた CI（継続的インテグレーション）の動作確認を目的とした、小規模なサンプルアプリケーションです。  
+勤怠管理アプリ（attendance-management-app）と同一の技術スタックを採用し、プッシュ時の自動テスト実行フローを検証します。
+
+---
+
+## 採用技術
+
+| カテゴリ | 技術 | バージョン |
+|---|---|---|
+| 言語 | PHP | 8.5 |
+| フレームワーク | Laravel | 12 |
+| データベース | MySQL | 8.4 |
+| 開発環境 | Docker（Laravel Sail） | 最新安定版 |
+| テスト | PHPUnit | Laravel 12 同梱版 |
+| CI | GitHub Actions | - |
+
+---
+
+## 要件定義
+
+### 1. 目的
+
+- GitHub Actions による自動テスト（CI）の基本フローを検証する
+- PHP / Laravel / MySQL / Docker 構成での CI パイプラインの動作を確認する
+- 勤怠管理アプリ本番導入前のパイロット環境として機能させる
+
+---
+
+### 2. アプリケーション概要
+
+**シンプルなメモ管理アプリ（Memo CRUD）**
+
+GitHub Actions のテストに最適な、最小限の CRUD 機能を持つ Web アプリケーション。  
+認証・データ永続化・バリデーションを含む実践的な構成とすることで、CI フローの妥当性を検証できる。
+
+---
+
+### 3. 機能要件
+
+#### 3.1 認証機能
+
+- メールアドレス・パスワードによるログイン／ログアウト
+- 未認証ユーザーのアクセス制限（ミドルウェアによるリダイレクト）
+- Laravel Breeze による実装（最小構成）
+
+#### 3.2 メモ機能（CRUD）
+
+| 機能 | 内容 |
+|---|---|
+| 一覧表示 | ログインユーザー自身のメモ一覧を表示する |
+| 新規作成 | タイトル（必須・最大100文字）・本文（任意）を入力して保存する |
+| 詳細表示 | 指定メモの内容を表示する |
+| 編集 | タイトル・本文を編集して更新する |
+| 削除 | 指定メモを削除する（他ユーザーのメモは操作不可） |
+
+#### 3.3 バリデーション
+
+- タイトル：必須、最大100文字
+- 他ユーザーのメモへのアクセスは 403 を返す
+
+---
+
+### 4. 非機能要件
+
+- Docker（Laravel Sail）で環境を統一し、ローカルと CI で同一環境を再現する
+- テストはインメモリDBまたはテスト用 MySQL コンテナで実行する
+- GitHub Actions ワークフローはプッシュ時に自動で PHPUnit を実行する
+- テスト失敗時はマージをブロックできる構成とする（ブランチ保護との連携を想定）
+
+---
+
+### 5. テスト要件
+
+#### 5.1 テスト対象
+
+| テスト種別 | 対象 |
+|---|---|
+| Feature テスト | 認証・メモ CRUD の各エンドポイント |
+| Unit テスト | バリデーションロジック・モデルの関係 |
+
+#### 5.2 テストケース（主要）
+
+- 未認証ユーザーがメモ一覧へアクセスするとログイン画面にリダイレクトされる
+- 認証済みユーザーがメモを作成できる
+- タイトル未入力でバリデーションエラーが返る
+- 他ユーザーのメモを編集しようとすると 403 が返る
+- 認証済みユーザーが自身のメモを削除できる
+
+---
+
+### 6. GitHub Actions ワークフロー要件
+
+| 項目 | 内容 |
+|---|---|
+| トリガー | `push`（全ブランチ）および `pull_request`（mainブランチ） |
+| 実行環境 | `ubuntu-latest` |
+| サービスコンテナ | MySQL 8.4 |
+| 実行ステップ | コードチェックアウト → PHP セットアップ → Composer インストール → `.env` 生成 → マイグレーション → PHPUnit 実行 |
+
+---
+
+### 7. ディレクトリ構成（予定）
+
+```
+github-actions-sample/
+├── .github/
+│   └── workflows/
+│       └── ci.yml          # GitHub Actions ワークフロー定義
+├── app/
+│   ├── Http/Controllers/
+│   │   └── MemoController.php
+│   ├── Models/
+│   │   └── Memo.php
+│   └── Policies/
+│       └── MemoPolicy.php
+├── database/
+│   ├── migrations/
+│   └── factories/
+├── tests/
+│   ├── Feature/
+│   │   └── MemoTest.php
+│   └── Unit/
+│       └── MemoModelTest.php
+└── docker-compose.yml
+```
+
+---
+
+### 8. データベース設計
+
+#### `memos` テーブル
+
+| カラム名 | 型 | 制約 | 説明 |
+|---|---|---|---|
+| id | BIGINT UNSIGNED | PK, AUTO INCREMENT | メモID |
+| user_id | BIGINT UNSIGNED | FK（users.id）, NOT NULL | 作成ユーザー |
+| title | VARCHAR(100) | NOT NULL | タイトル |
+| body | TEXT | NULL許容 | 本文 |
+| created_at | TIMESTAMP | NOT NULL | 作成日時 |
+| updated_at | TIMESTAMP | NOT NULL | 更新日時 |
+
+---
 
