@@ -149,3 +149,82 @@ github-actions-sample/
 
 ---
 
+## CD（継続的デプロイ）について
+
+> **このリポジトリでは CD の実装は予定していません。**  
+> CI（自動テスト）の学習を目的としているため、デプロイフローは対象外です。  
+> 以下は参考として一般的な CD の工程をまとめます。
+
+---
+
+### CD とは
+
+CI（テスト自動化）に続いて、**テストが通ったコードを自動でサーバーへデプロイする**仕組みです。
+
+```
+コードを main にマージ
+        ↓
+GitHub Actions が CD ワークフローを起動
+        ↓
+本番サーバーに自動デプロイ
+        ↓
+アプリが更新される
+```
+
+---
+
+### 一般的な CD の工程
+
+| ステップ | 内容 |
+|---------|------|
+| 1. トリガー | `main` ブランチへのマージを検知 |
+| 2. ビルド | Docker イメージのビルド / アセットコンパイルなど |
+| 3. テスト | CI と同様のテストを再実行して安全性を確認 |
+| 4. デプロイ | サーバーへのファイル転送・コンテナ更新 |
+| 5. マイグレーション | DB スキーマの更新（`php artisan migrate`） |
+| 6. ヘルスチェック | デプロイ後にアプリが正常動作しているか確認 |
+| 7. 通知 | Slack などへデプロイ成功 / 失敗を通知 |
+
+---
+
+### デプロイ先の選択肢
+
+| サービス | 特徴 |
+|---------|------|
+| AWS EC2 | 仮想マシン。自由度が高いが設定が多い |
+| AWS ECS | Docker コンテナのマネージドサービス |
+| GCP Cloud Run | コンテナをサーバーレスで実行 |
+| Render / Railway | 設定が少なく個人開発向け |
+
+---
+
+### GitHub Actions での CD ワークフロー例
+
+```yaml
+name: Deploy
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: SSH でサーバーに接続してデプロイ
+        run: |
+          ssh ${{ secrets.SSH_USER }}@${{ secrets.SERVER_IP }} "
+            cd /var/www/app &&
+            git pull origin main &&
+            composer install --no-dev &&
+            php artisan migrate --force &&
+            php artisan config:cache
+          "
+```
+
+> `secrets.SSH_USER` などの機密情報は GitHub の **Settings → Secrets** に登録して管理します。
+
+---
+
