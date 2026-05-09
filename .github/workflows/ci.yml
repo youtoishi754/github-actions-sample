@@ -1,0 +1,72 @@
+name: CI
+
+# ─────────────────────────────────────────────────────────────
+# GitHub Actions とは？
+#   コードを push したときに GitHub のサーバーが自動でこのファイルを読み、
+#   下に書いた手順（steps）を順番に実行してくれる仕組みです。
+#   テストを自動で走らせることで「壊れたコードを誤ってマージしてしまう」
+#   ミスを防ぐことができます。
+# ─────────────────────────────────────────────────────────────
+
+# ─────────────────────────────────────────────────────────────
+# トリガー: このファイルが実行されるタイミング
+# ─────────────────────────────────────────────────────────────
+on:
+  push:                   # どのブランチでも push したら実行
+  pull_request:
+    branches: [main]      # main ブランチへの PR を出したときも実行
+
+jobs:
+  test:
+    # ジョブ（仕事のまとまり）の名前が "test"
+    # GitHub が用意した Ubuntu サーバー上で実行される（自分の PC は使わない）
+    # 毎回まっさらな環境からスタートするため、環境差異による失敗が起きにくい
+    runs-on: ubuntu-latest
+
+    # ─────────────────────────────────────────────────────────
+    # ステップ: 上から順に1つずつ実行される
+    #   1つでもエラーになると、そこで処理が中断し「失敗」として扱われる
+    # ─────────────────────────────────────────────────────────
+    steps:
+      # ① GitHub 上のリポジトリのコードをサーバーにダウンロードする
+      #    （手元で git clone するのと同じ）
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # ② PHP 8.4 と Laravel に必要な拡張機能をインストールする
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.4'
+          extensions: mbstring, pdo_sqlite, sqlite3
+          coverage: none
+
+      # ③ composer install を実行して vendor/ フォルダを作成する
+      #    （ライブラリ類をまとめてインストールするコマンド）
+      - name: Install Composer dependencies
+        run: composer install --no-interaction --prefer-dist --optimize-autoloader
+
+      # ④ .env.example をコピーして .env を作成する
+      #    （Laravel の設定ファイル。サーバー上には .env がないので手動で作る必要がある）
+      - name: Copy .env
+        run: cp .env.example .env
+
+      # ⑤ APP_KEY を生成する
+      #    （Laravel がセッションや暗号化に使う秘密鍵。必ず生成が必要）
+      - name: Generate app key
+        run: php artisan key:generate
+
+      # ⑥ SQLite のデータベースファイルを作成する
+      #    （テスト用の空の DB ファイル。touch コマンドで空ファイルを作るだけでよい）
+      - name: Create SQLite database
+        run: touch database/database.sqlite
+
+      # ⑦ マイグレーションを実行してテーブルを作成する
+      #    （DB のテーブル構造を定義ファイルから自動で構築する）
+      - name: Run migrations
+        run: php artisan migrate --force
+
+      # ⑧ PHPUnit テストを実行する
+      #    （tests/ フォルダ内のテストを全て実行。1つでも失敗するとこのジョブは「失敗」になる）
+      - name: Run tests
+        run: php artisan test
