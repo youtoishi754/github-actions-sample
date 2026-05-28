@@ -13,14 +13,16 @@ GitHub Actions を用いた CI（継続的インテグレーション）の動�
 
 ## 採用技術
 
-| カテゴリ | 技術 | バージョン |
-|---|---|---|
-| 言語 | PHP | 8.5 |
-| フレームワーク | Laravel | 12 |
-| データベース | MySQL | 8.4 |
-| 開発環境 | Docker（Laravel Sail） | 最新安定版 |
-| テスト | PHPUnit | Laravel 12 同梱版 |
-| CI | GitHub Actions | - |
+| カテゴリ | 技術 | バージョン | 備考 |
+|---|---|---|---|
+| 言語 | PHP | 8.5 | |
+| フレームワーク | Laravel | 12 | |
+| 認証バックエンド | Laravel Fortify | 最新安定版 | ヘッドレス認証。Breeze は Laravel 12 では非推奨のため不採用 |
+| データベース | MySQL | 8.4 | |
+| 開発環境 | Docker（Laravel Sail） | 最新安定版 | `compose.yaml` 形式（`docker-compose.yml` は旧形式） |
+| DB 管理 GUI | phpMyAdmin | latest | `http://localhost:8080` でアクセス |
+| テスト | PHPUnit | Laravel 12 同梱版 | |
+| CI | GitHub Actions | - | |
 
 ---
 
@@ -49,7 +51,10 @@ GitHub Actions のテストに最適な、最小限の CRUD 機能を持つ Web 
 
 - メールアドレス・パスワードによるログイン／ログアウト
 - 未認証ユーザーのアクセス制限（ミドルウェアによるリダイレクト）
-- Laravel Breeze による実装（最小構成）
+- **Laravel Fortify** による実装
+  - Fortify は認証のバックエンドロジック（ルート・コントローラ）のみを提供するヘッドレスパッケージ
+  - ログイン・登録の View は独自の Blade テンプレートとして実装する
+  - `FortifyServiceProvider` でアクション・機能フラグを設定する
 
 #### 3.2 メモ機能（CRUD）
 
@@ -71,6 +76,8 @@ GitHub Actions のテストに最適な、最小限の CRUD 機能を持つ Web 
 ### 4. 非機能要件
 
 - Docker（Laravel Sail）で環境を統一し、ローカルと CI で同一環境を再現する
+- Docker Compose は `compose.yaml` 形式を使用する（旧 `docker-compose.yml` は非推奨）
+- phpMyAdmin（`http://localhost:8080`）で DB の内容を GUI で確認できる
 - テストはインメモリDBまたはテスト用 MySQL コンテナで実行する
 - GitHub Actions ワークフローはプッシュ時に自動で PHPUnit を実行する
 - テスト失敗時はマージをブロックできる構成とする（ブランチ保護との連携を想定）
@@ -113,23 +120,36 @@ GitHub Actions のテストに最適な、最小限の CRUD 機能を持つ Web 
 github-actions-sample/
 ├── .github/
 │   └── workflows/
-│       └── ci.yml          # GitHub Actions ワークフロー定義
+│       └── ci.yml                    # GitHub Actions ワークフロー定義
 ├── app/
 │   ├── Http/Controllers/
 │   │   └── MemoController.php
 │   ├── Models/
-│   │   └── Memo.php
-│   └── Policies/
-│       └── MemoPolicy.php
+│   │   ├── Memo.php
+│   │   └── User.php
+│   ├── Policies/
+│   │   └── MemoPolicy.php
+│   └── Providers/
+│       └── FortifyServiceProvider.php  # Fortify の設定
 ├── database/
 │   ├── migrations/
 │   └── factories/
+├── resources/
+│   └── views/
+│       ├── auth/
+│       │   ├── login.blade.php         # Fortify 用ログイン View（独自実装）
+│       │   └── register.blade.php      # Fortify 用登録 View（独自実装）
+│       └── memos/
+│           ├── index.blade.php
+│           ├── create.blade.php
+│           ├── show.blade.php
+│           └── edit.blade.php
 ├── tests/
 │   ├── Feature/
 │   │   └── MemoTest.php
 │   └── Unit/
 │       └── MemoModelTest.php
-└── docker-compose.yml
+└── compose.yaml                        # Docker Compose（旧 docker-compose.yml から変更）
 ```
 
 ---
