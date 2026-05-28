@@ -20,6 +20,7 @@ GitHub Actions を用いた CI（継続的インテグレーション）の動�
 | 認証バックエンド | Laravel Fortify | 最新安定版 | ヘッドレス認証。Breeze は Laravel 12 では非推奨のため不採用 |
 | データベース | MySQL | 8.4 | |
 | 開発環境 | Docker（Laravel Sail） | 最新安定版 | `compose.yaml` 形式（`docker-compose.yml` は旧形式） |
+| DB 管理 GUI | phpMyAdmin | latest | `http://localhost:8080` でアクセス |
 | テスト | PHPUnit | Laravel 12 同梱版 | |
 | CI | GitHub Actions | - | |
 
@@ -76,6 +77,7 @@ GitHub Actions のテストに最適な、最小限の CRUD 機能を持つ Web 
 
 - Docker（Laravel Sail）で環境を統一し、ローカルと CI で同一環境を再現する
 - Docker Compose は `compose.yaml` 形式を使用する（旧 `docker-compose.yml` は非推奨）
+- phpMyAdmin（`http://localhost:8080`）で DB の内容を GUI で確認できる
 - テストはインメモリDBまたはテスト用 MySQL コンテナで実行する
 - GitHub Actions ワークフローはプッシュ時に自動で PHPUnit を実行する
 - テスト失敗時はマージをブロックできる構成とする（ブランチ保護との連携を想定）
