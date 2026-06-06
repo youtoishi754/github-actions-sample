@@ -60,6 +60,47 @@ GitHub Actions の CI（自動テスト）パイプラインの学習を目的�
 - **レイアウト** — `layouts/app.blade.php`（認証後）, `layouts/guest.blade.php`（認証前）
 - **Factory** — `MemoFactory` は `user_id=User::factory()`, `title=fake()->sentence(4)`, `body=fake()->paragraph()` 
 
+## Branch Strategy
+
+ブランチは以下の構成で運用する。**main・develop への直 push は禁止。**
+
+```
+main        # 本番コード。CI パス済みの develop からのみマージ
+└── develop # 開発中の統合ブランチ
+      ├── feature/*  # 新機能の追加
+      ├── fix/*      # バグ修正
+      ├── docs/*     # ドキュメント更新
+      └── ci/*       # CI 設定の変更
+```
+
+### ブランチ命名規則
+
+| ブランチ | 用途 | マージ先 |
+|---|---|---|
+| `main` | 本番環境にデプロイするコード | - |
+| `develop` | 開発中の最新コード | `main` |
+| `feature/*` | 新機能の開発 | `develop` |
+| `fix/*` | バグ修正 | `develop` |
+| `docs/*` | ドキュメント更新 | `develop` |
+| `ci/*` | CI 設定の変更 | `develop` |
+
+### PR フロー
+
+```
+feature/xxx → develop（PR・CI パス必須）→ マージ
+develop     → main（PR・CI パス必須）  → マージ
+```
+
+### ブランチ名の例
+
+```
+feature/add-memo-search
+feature/add-title-length-validation
+fix/redirect-after-login
+docs/update-readme
+ci/add-php85-support
+```
+
 ## Commit Message Format
 
 コミットメッセージは以下の形式に従う（Conventional Commits 準拠）：
