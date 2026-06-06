@@ -72,4 +72,98 @@ class MemoTest extends TestCase
         $response->assertRedirect(route('memos.index'));
         $this->assertDatabaseMissing('memos', ['id' => $memo->id]);
     }
+
+    /** タイトルが100文字ちょうどで作成できる（境界値） */
+    public function test_title_with_exactly_100_characters_passes(): void
+    {
+        $user = User::factory()->create();
+
+        $response = $this->actingAs($user)->post(route('memos.store'), [
+            'title' => str_repeat('あ', 100),
+            'body'  => '',
+        ]);
+
+        $response->assertRedirect(route('memos.index'));
+        $this->assertDatabaseHas('memos', ['user_id' => $user->id]);
+    }
+
+    /** タイトルが101文字でバリデーションエラーになる（境界値） */
+    public function test_title_with_101_characters_fails_validation(): void
+    {
+        $user = User::factory()->create();
+
+        $response = $this->actingAs($user)->post(route('memos.store'), [
+            'title' => str_repeat('あ', 101),
+            'body'  => '',
+        ]);
+
+        $response->assertSessionHasErrors('title');
+        $this->assertDatabaseCount('memos', 0);
+    }
+
+    /** 本文が空でもメモを作成できる */
+    public function test_memo_can_be_created_without_body(): void
+    {
+        $user = User::factory()->create();
+
+        $response = $this->actingAs($user)->post(route('memos.store'), [
+            'title' => 'タイトルのみ',
+            'body'  => '',
+        ]);
+
+        $response->assertRedirect(route('memos.index'));
+        $this->assertDatabaseHas('memos', [
+            'user_id' => $user->id,
+            'title'   => 'タイトルのみ',
+            'body'    => null,
+        ]);
+    }
+
+    /** 存在しないメモへのアクセスは 404 になる */
+    public function test_accessing_nonexistent_memo_returns_404(): void
+    {
+        $user = User::factory()->create();
+
+        $this->actingAs($user)
+            ->get(route('memos.show', ['memo' => 99999]))
+            ->assertNotFound();
+    }
+
+    /** 他ユーザーのメモを表示しようとすると 403 になる */
+    public function test_other_users_memo_returns_403_on_show(): void
+    {
+        $owner = User::factory()->create();
+        $other = User::factory()->create();
+        $memo  = Memo::factory()->create(['user_id' => $owner->id]);
+
+        $this->actingAs($other)
+            ->get(route('memos.show', $memo))
+            ->assertForbidden();
+    }
+
+    /** 他ユーザーのメモを更新しようとすると 403 になる */
+    public function test_other_users_memo_returns_403_on_update(): void
+    {
+        $owner = User::factory()->create();
+        $other = User::factory()->create();
+        $memo  = Memo::factory()->create(['user_id' => $owner->id]);
+
+        $this->actingAs($other)
+            ->put(route('memos.update', $memo), ['title' => '改ざん', 'body' => ''])
+            ->assertForbidden();
+    }
+
+    /** 他ユーザーのメモを削除しようとすると 403 になる */
+    public function test_other_users_memo_returns_403_on_destroy(): void
+    {
+        $owner = User::factory()->create();
+        $other = User::factory()->create();
+        $memo  = Memo::factory()->create(['user_id' => $owner->id]);
+
+        $this->actingAs($other)
+            ->delete(route('memos.destroy', $memo))
+            ->assertForbidden();
+
+        $this->assertDatabaseHas('memos', ['id' => $memo->id]);
+    }
 }
