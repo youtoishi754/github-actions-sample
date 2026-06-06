@@ -166,4 +166,64 @@ class MemoTest extends TestCase
 
         $this->assertDatabaseHas('memos', ['id' => $memo->id]);
     }
+
+    /** 認証済みユーザーが自身のメモ一覧を表示できる */
+    public function test_authenticated_user_can_view_memo_list(): void
+    {
+        $user = User::factory()->create();
+        Memo::factory()->count(3)->create(['user_id' => $user->id]);
+
+        $this->actingAs($user)
+            ->get(route('memos.index'))
+            ->assertOk()
+            ->assertViewIs('memos.index')
+            ->assertViewHas('memos');
+    }
+
+    /** 認証済みユーザーが自身のメモを表示できる */
+    public function test_authenticated_user_can_view_own_memo(): void
+    {
+        $user = User::factory()->create();
+        $memo = Memo::factory()->create(['user_id' => $user->id]);
+
+        $this->actingAs($user)
+            ->get(route('memos.show', $memo))
+            ->assertOk()
+            ->assertViewIs('memos.show')
+            ->assertViewHas('memo', $memo);
+    }
+
+    /** 認証済みユーザーが自身のメモを更新できる */
+    public function test_authenticated_user_can_update_own_memo(): void
+    {
+        $user = User::factory()->create();
+        $memo = Memo::factory()->create(['user_id' => $user->id]);
+
+        $this->actingAs($user)
+            ->put(route('memos.update', $memo), [
+                'title' => '更新後タイトル',
+                'body'  => '更新後本文',
+            ])
+            ->assertRedirect(route('memos.show', $memo));
+
+        $this->assertDatabaseHas('memos', [
+            'id'    => $memo->id,
+            'title' => '更新後タイトル',
+            'body'  => '更新後本文',
+        ]);
+    }
+
+    /** 更新時もタイトルは必須 */
+    public function test_title_is_required_for_updating_a_memo(): void
+    {
+        $user = User::factory()->create();
+        $memo = Memo::factory()->create(['user_id' => $user->id]);
+
+        $this->actingAs($user)
+            ->put(route('memos.update', $memo), [
+                'title' => '',
+                'body'  => '本文',
+            ])
+            ->assertSessionHasErrors('title');
+    }
 }
